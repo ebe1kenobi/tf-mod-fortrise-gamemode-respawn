@@ -23,8 +23,7 @@ namespace TFModFortRisePoto
     {
       return settings != null
           && settings.IsCustom
-          && settings.CurrentModeName == nameof(Respawn)
-          && TFModFortRisePotoModule.Settings.lifeNumber > 1;
+          && settings.CurrentModeName == nameof(Respawn);
     }
 
     private static bool RespawnEnabledFor(global::TowerFall.Player self)
@@ -63,7 +62,7 @@ namespace TFModFortRisePoto
       int p = self.PlayerIndex;
       if (LivesRemaining[p] <= 0)
       {
-        LivesRemaining[p] = TFModFortRisePotoModule.Settings.lifeNumber;
+        LivesRemaining[p] = PlayerHandicap.GetLivesHandicap(p);
       }
       ShouldRespawn[p] = false;
       if (!HasRoundSpawnPosition[p])
@@ -94,7 +93,7 @@ namespace TFModFortRisePoto
       if (wrapped || !RespawnEnabledFor(self))
         return;
 
-      int maxLives = Math.Max(1, TFModFortRisePotoModule.Settings.lifeNumber);
+      int maxLives = Math.Max(1, PlayerHandicap.GetLivesHandicap(playerIndex));
       int lives = Math.Max(0, LivesRemaining[playerIndex]);
       if (maxLives <= 1)
         return;
@@ -102,7 +101,7 @@ namespace TFModFortRisePoto
       if (self.State == global::TowerFall.Player.PlayerStates.Ducking || self.Invisible)
         return;
 
-      if (TFModFortRisePotoModule.Settings.lifeNumber > 8) {
+      if (PlayerHandicap.GetLivesHandicap(playerIndex) > 8) {
         Vector2 textPos = self.Position + new Vector2(0f, -22f);
         Draw.OutlineTextCentered(TFGame.Font, lives.ToString(), textPos, Color.White, 1f);
         return;
@@ -133,7 +132,7 @@ namespace TFModFortRisePoto
       }
       for (int i = 0; i < TFGame.Players.Length; i++)
       {
-        LivesRemaining[i] = TFGame.Players[i] ? TFModFortRisePotoModule.Settings.lifeNumber : 0;
+        LivesRemaining[i] = TFGame.Players[i] ? PlayerHandicap.GetLivesHandicap(i) : 0;
         ShouldRespawn[i] = false;
         HasRoundSpawnPosition[i] = false;
         ImmunityFramesRemaining[i] = 0f;
@@ -251,7 +250,7 @@ namespace TFModFortRisePoto
 
       session.CurrentLevel.Add(newPlayer);
 
-      int immunityFrames = Math.Max(0, TFModFortRisePotoModule.Settings.respawnImmunitySeconds * FramesPerSecond);
+      int immunityFrames = Math.Max(0, PlayerHandicap.GetImmunityHandicap() * FramesPerSecond);
       if (immunityFrames > 0)
       {
         newPlayer.Flash(immunityFrames);

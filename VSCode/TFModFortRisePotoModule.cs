@@ -38,12 +38,14 @@ namespace TFModFortRisePoto
     public override void Load()
     {
       MyRespawnPlayer.Load();
+      MyVersusModeButton.Load();
     }
 
 
     public override void Unload()
     {
       MyRespawnPlayer.Unload();
+      MyVersusModeButton.Unload();
     }
   }
 }
