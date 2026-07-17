@@ -10,12 +10,13 @@ namespace TFModFortRisePoto
   /// </summary>
   public static class PlayerHandicap
   {
-    public const int MaxImmunityHandicap = 1000;
-    public const int MaxLivesHandicap = 1000000000;
+    public const int MaxImmunityHandicap = 10; 
+    //public const int MaxLivesHandicap = 1000000000;  //todo train
+    public const int MaxLivesHandicap = 10;  //todo train
 
     private static int ImmunityHandicap = 0;
-    //private static readonly int[] LivesHandicap = { 1, 1, 1, 1, 1, 1, 1, 1 }; //todo train
-    private static readonly int[] LivesHandicap = { MaxLivesHandicap, MaxLivesHandicap, MaxLivesHandicap, MaxLivesHandicap, MaxLivesHandicap, MaxLivesHandicap, MaxLivesHandicap, MaxLivesHandicap };
+    private static readonly int[] LivesHandicap = { 1, 1, 1, 1, 1, 1, 1, 1 }; //todo train
+    //private static readonly int[] LivesHandicap = { MaxLivesHandicap, MaxLivesHandicap, MaxLivesHandicap, MaxLivesHandicap, MaxLivesHandicap, MaxLivesHandicap, MaxLivesHandicap, MaxLivesHandicap };  //todo train
 
     public static int GetImmunityHandicap()
     {

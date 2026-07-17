@@ -19,7 +19,16 @@ namespace TFModFortRisePoto
       RefreshActivePlayers();
     }
 
-    public static bool IsOpen { get; private set; }
+
+    // Instance courante de la popup (null si aucune).
+    public static UIVersusHandicapPopup Current;
+
+    // Ouverte seulement si l'instance courante appartient a la scene ACTIVE.
+    // Auto-guerison : si la scene a ete remplacee alors que la popup etait ouverte
+    // (ex: on lance le match en appuyant sur Start pendant que la popup est la),
+    // son Removed() n'est jamais appele ; mais sa Scene ne correspond plus a la
+    // scene courante -> elle ne compte plus comme ouverte, et le hint/Y reviennent.
+    public static bool IsOpen => Current != null && Current.Scene == Engine.Instance.Scene;
 
     private void RefreshActivePlayers()
     {
@@ -40,7 +49,7 @@ namespace TFModFortRisePoto
     public override void Added()
     {
       base.Added();
-      IsOpen = true;
+      Current = this;
       if (ownerButton != null)
         ownerButton.Selected = false;
 
@@ -50,7 +59,8 @@ namespace TFModFortRisePoto
     public override void Removed()
     {
       base.Removed();
-      IsOpen = false;
+      if (Current == this)
+        Current = null;
       Sounds.ui_unpause.Play(160f);
       MenuInput.Clear();
 
