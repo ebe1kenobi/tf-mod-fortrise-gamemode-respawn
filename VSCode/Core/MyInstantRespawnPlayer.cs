@@ -1,16 +1,17 @@
 using System;
 using FortRise;
+using HarmonyLib;
 using Microsoft.Xna.Framework;
 using Monocle;
 using TowerFall;
 
-namespace TFModFortRisePoto
+namespace TFModFortRiseGameModeRespawn
 {
   /// <summary>
-  /// In <see cref="RespawnLivesVersus"/> mode, players have N lives and respawn immediately when killed.
+  /// In <see cref="Respawn"/> mode, players have N lives and respawn immediately when killed.
   /// No shield mechanic - normal death with instant respawn if lives remain.
   /// </summary>
-  public static class MyRespawnPlayer
+  public class MyRespawnPlayer : IHookable
   {
     public static readonly int[] LivesRemaining = new int[8];
     public static readonly bool[] ShouldRespawn = new bool[8];
@@ -19,47 +20,73 @@ namespace TFModFortRisePoto
     private static readonly float[] ImmunityFramesRemaining = new float[8];
     private const int FramesPerSecond = 60;
 
+    // Etat transmis entre le prefix et le postfix d'un meme appel patche.
+    private struct HUDRenderState
+    {
+      public bool ArrowHudHidden;
+      public bool PreviousArrowHudVisible;
+    }
+
+    private struct UpdateState
+    {
+      public bool ShootLockedByImmunity;
+      public bool PreviousShootLock;
+    }
+
+    /// <summary>
+    /// FortRise 5 attribue une valeur de <see cref="Modes"/> au mode enregistre :
+    /// on compare dessus au lieu du couple IsCustom / CurrentModeName de FortRise 4.
+    /// </summary>
     internal static bool IsRespawnMode(MatchSettings settings)
     {
       return settings != null
-          && settings.IsCustom
-          && settings.CurrentModeName == nameof(Respawn);
+          && Respawn.RespawnEntry != null
+          && settings.Mode == Respawn.RespawnEntry.Modes;
     }
 
-    private static bool RespawnEnabledFor(global::TowerFall.Player self)
+    private static bool RespawnEnabledFor(Player self)
     {
       return self?.Level?.Session?.MatchSettings != null
           && IsRespawnMode(self.Level.Session.MatchSettings);
     }
 
-    internal static void Load()
+    public static void Load(IHarmony harmony)
     {
-      On.TowerFall.Player.Added += Added_patch;
-      On.TowerFall.Player.HUDRender += HUDRender_patch;
-      On.TowerFall.Player.HurtBouncedOn += HurtBouncedOn_patch;
-      On.TowerFall.Player.Update += Update_patch;
-      On.TowerFall.Session.StartRound += StartRound_patch;
-      On.TowerFall.Session.OnPlayerDeath += OnPlayerDeath_patch;
+      harmony.Patch(
+          AccessTools.DeclaredMethod(typeof(Player), nameof(Player.Added)),
+          postfix: new HarmonyMethod(Added_patch)
+      );
+      harmony.Patch(
+          AccessTools.DeclaredMethod(typeof(Player), nameof(Player.HUDRender)),
+          prefix: new HarmonyMethod(HUDRender_prefix_patch),
+          postfix: new HarmonyMethod(HUDRender_postfix_patch)
+      );
+      harmony.Patch(
+          AccessTools.DeclaredMethod(typeof(Player), nameof(Player.HurtBouncedOn)),
+          prefix: new HarmonyMethod(HurtBouncedOn_patch)
+      );
+      harmony.Patch(
+          AccessTools.DeclaredMethod(typeof(Player), nameof(Player.Update)),
+          prefix: new HarmonyMethod(Update_prefix_patch),
+          postfix: new HarmonyMethod(Update_postfix_patch)
+      );
+      harmony.Patch(
+          AccessTools.DeclaredMethod(typeof(Session), nameof(Session.StartRound)),
+          postfix: new HarmonyMethod(StartRound_patch)
+      );
+      harmony.Patch(
+          AccessTools.DeclaredMethod(typeof(Session), nameof(Session.OnPlayerDeath)),
+          prefix: new HarmonyMethod(OnPlayerDeath_prefix_patch),
+          postfix: new HarmonyMethod(OnPlayerDeath_postfix_patch)
+      );
     }
 
-    internal static void Unload()
+    private static void Added_patch(Player __instance)
     {
-      On.TowerFall.Player.Added -= Added_patch;
-      On.TowerFall.Player.HUDRender -= HUDRender_patch;
-      On.TowerFall.Player.HurtBouncedOn -= HurtBouncedOn_patch;
-      On.TowerFall.Player.Update -= Update_patch;
-      On.TowerFall.Session.StartRound -= StartRound_patch;
-      On.TowerFall.Session.OnPlayerDeath -= OnPlayerDeath_patch;
-    }
-
-    private static void Added_patch(On.TowerFall.Player.orig_Added orig, global::TowerFall.Player self)
-    {
-      orig(self);
-
-      if (!IsRespawnMode(self.Level.Session.MatchSettings))
+      if (!IsRespawnMode(__instance.Level.Session.MatchSettings))
         return;
 
-      int p = self.PlayerIndex;
+      int p = __instance.PlayerIndex;
       if (LivesRemaining[p] <= 0)
       {
         LivesRemaining[p] = PlayerHandicap.GetLivesHandicap(p);
@@ -67,42 +94,44 @@ namespace TFModFortRisePoto
       ShouldRespawn[p] = false;
       if (!HasRoundSpawnPosition[p])
       {
-        RoundSpawnPositions[p] = self.Position;
+        RoundSpawnPositions[p] = __instance.Position;
         HasRoundSpawnPosition[p] = true;
       }
     }
 
-    private static void HUDRender_patch(On.TowerFall.Player.orig_HUDRender orig, global::TowerFall.Player self, bool wrapped)
+    private static void HUDRender_prefix_patch(Player __instance, bool wrapped, ref HUDRenderState __state)
     {
-      int playerIndex = self.PlayerIndex;
-      bool hideArrowHud = ImmunityFramesRemaining[playerIndex] > 0f && self.ArrowHUD != null;
-      bool previousArrowHudVisible = false;
-      if (hideArrowHud)
+      int playerIndex = __instance.PlayerIndex;
+      __state.ArrowHudHidden = ImmunityFramesRemaining[playerIndex] > 0f && __instance.ArrowHUD != null;
+      if (__state.ArrowHudHidden)
       {
-        previousArrowHudVisible = self.ArrowHUD.Visible;
-        self.ArrowHUD.Visible = false;
+        __state.PreviousArrowHudVisible = __instance.ArrowHUD.Visible;
+        __instance.ArrowHUD.Visible = false;
+      }
+    }
+
+    private static void HUDRender_postfix_patch(Player __instance, bool wrapped, ref HUDRenderState __state)
+    {
+      int playerIndex = __instance.PlayerIndex;
+      if (__state.ArrowHudHidden)
+      {
+        __instance.ArrowHUD.Visible = __state.PreviousArrowHudVisible;
       }
 
-      orig(self, wrapped);
-
-      if (hideArrowHud)
-      {
-        self.ArrowHUD.Visible = previousArrowHudVisible;
-      }
-
-      if (wrapped || !RespawnEnabledFor(self))
+      if (wrapped || !RespawnEnabledFor(__instance))
         return;
 
       int maxLives = Math.Max(1, PlayerHandicap.GetLivesHandicap(playerIndex));
       int lives = Math.Max(0, LivesRemaining[playerIndex]);
       if (maxLives <= 1)
         return;
-      //if (self.State == global::TowerFall.Player.PlayerStates.Ducking || self.DodgeSliding || self.Invisible)
-      if (self.State == global::TowerFall.Player.PlayerStates.Ducking || self.Invisible)
+      //if (__instance.State == Player.PlayerStates.Ducking || __instance.DodgeSliding || __instance.Invisible)
+      if (__instance.State == Player.PlayerStates.Ducking || __instance.Invisible)
         return;
 
-      if (PlayerHandicap.GetLivesHandicap(playerIndex) > 8) {
-        Vector2 textPos = self.Position + new Vector2(0f, -22f);
+      if (PlayerHandicap.GetLivesHandicap(playerIndex) > 8)
+      {
+        Vector2 textPos = __instance.Position + new Vector2(0f, -22f);
         Draw.OutlineTextCentered(TFGame.Font, lives.ToString(), textPos, Color.White, 1f);
         return;
       }
@@ -111,7 +140,7 @@ namespace TFModFortRisePoto
       float segmentHeight = 3f;
       float gap = 1f;
       float barWidth = maxLives * segmentWidth + (maxLives - 1) * gap;
-      Vector2 barPos = (self.Position + new Vector2(-barWidth * 0.5f, -12.5f)).Floor();
+      Vector2 barPos = (__instance.Position + new Vector2(-barWidth * 0.5f, -12.5f)).Floor();
 
       Draw.Rect(barPos.X - 1f, barPos.Y - 1f, barWidth + 2f, segmentHeight + 2f, Color.Black * 0.75f);
       //Color lifeColor = Color.Lerp(Color.Red, Color.LimeGreen, (float)lives / maxLives);
@@ -123,13 +152,13 @@ namespace TFModFortRisePoto
       }
     }
 
-    private static void StartRound_patch(On.TowerFall.Session.orig_StartRound orig, global::TowerFall.Session self)
+    private static void StartRound_patch(Session __instance)
     {
-      orig(self);
-      if (!IsRespawnMode(self.MatchSettings))
+      if (!IsRespawnMode(__instance.MatchSettings))
       {
         return;
       }
+
       for (int i = 0; i < TFGame.Players.Length; i++)
       {
         LivesRemaining[i] = TFGame.Players[i] ? PlayerHandicap.GetLivesHandicap(i) : 0;
@@ -138,9 +167,9 @@ namespace TFModFortRisePoto
         ImmunityFramesRemaining[i] = 0f;
       }
 
-      foreach (Entity entity in self.CurrentLevel.Players)
+      foreach (Entity entity in __instance.CurrentLevel.Players)
       {
-        if (entity is global::TowerFall.Player player)
+        if (entity is Player player)
         {
           int p = player.PlayerIndex;
           RoundSpawnPositions[p] = player.Position;
@@ -149,76 +178,80 @@ namespace TFModFortRisePoto
       }
     }
 
-    private static void Update_patch(On.TowerFall.Player.orig_Update orig, global::TowerFall.Player self)
+    private static void Update_prefix_patch(Player __instance, ref UpdateState __state)
     {
-      if (!RespawnEnabledFor(self))
+      if (!RespawnEnabledFor(__instance))
       {
-        orig(self);
+        __state.ShootLockedByImmunity = false;
         return;
       }
 
-      int p = self.PlayerIndex;
-      bool shootLockedByImmunity = ImmunityFramesRemaining[p] > 0f;
-      bool previousShootLock = global::TowerFall.Player.ShootLock;
-      if (shootLockedByImmunity)
+      int p = __instance.PlayerIndex;
+      __state.ShootLockedByImmunity = ImmunityFramesRemaining[p] > 0f;
+      if (__state.ShootLockedByImmunity)
       {
-        global::TowerFall.Player.ShootLock = true;
-      }
-
-      orig(self);
-
-      if (shootLockedByImmunity)
-      {
-        global::TowerFall.Player.ShootLock = previousShootLock;
-        ImmunityFramesRemaining[p] = Math.Max(0f, ImmunityFramesRemaining[p] - Engine.TimeMult);
+        __state.PreviousShootLock = Player.ShootLock;
+        Player.ShootLock = true;
       }
     }
 
-    private static void HurtBouncedOn_patch(On.TowerFall.Player.orig_HurtBouncedOn orig, global::TowerFall.Player self, int bouncerIndex)
+    private static void Update_postfix_patch(Player __instance, ref UpdateState __state)
     {
-      if (RespawnEnabledFor(self) &&
+      if (!__state.ShootLockedByImmunity)
+        return;
+
+      int p = __instance.PlayerIndex;
+      Player.ShootLock = __state.PreviousShootLock;
+      ImmunityFramesRemaining[p] = Math.Max(0f, ImmunityFramesRemaining[p] - Engine.TimeMult);
+    }
+
+    private static bool HurtBouncedOn_patch(Player __instance, int bouncerIndex)
+    {
+      if (RespawnEnabledFor(__instance) &&
           bouncerIndex >= 0 &&
           bouncerIndex < ImmunityFramesRemaining.Length &&
           ImmunityFramesRemaining[bouncerIndex] > 0f)
       {
-        return;
+        return false;
       }
 
-      orig(self, bouncerIndex);
+      return true;
     }
 
-    private static void OnPlayerDeath_patch(On.TowerFall.Session.orig_OnPlayerDeath orig, global::TowerFall.Session self, global::TowerFall.Player player, global::TowerFall.PlayerCorpse corpse, int playerIndex, DeathCause deathType, Vector2 position, int killerIndex)
+    private static void OnPlayerDeath_prefix_patch(Session __instance, Player player, PlayerCorpse corpse, int playerIndex, DeathCause deathType, Vector2 position, int killerIndex, ref bool __state)
     {
+      __state = false;
+
       // Check if we're in instant respawn mode
-      if (self.MatchSettings.IsCustom &&
-          self.MatchSettings.CurrentModeName == nameof(Respawn))
+      if (!IsRespawnMode(__instance.MatchSettings))
+        return;
+
+      ref int lives = ref LivesRemaining[playerIndex];
+
+      if (lives > 1)
       {
-        ref int lives = ref LivesRemaining[playerIndex];
-
-        if (lives > 1)
-        {
-          lives--;
-
-          orig(self, player, corpse, playerIndex, deathType, position, killerIndex);
-
-          Alarm.Set(corpse, 1, delegate
-          {
-            RespawnPlayer(self, playerIndex, player.Allegiance, player.TeamColor);
-          });
-
-          return;
-        }
-        else if (lives == 1)
-        {
-          lives--;
-        }
+        lives--;
+        // Le respawn est declenche dans le postfix, une fois la mort traitee.
+        __state = true;
       }
-
-      // Call original death handling (only if not instant respawn or last life)
-      orig(self, player, corpse, playerIndex, deathType, position, killerIndex);
+      else if (lives == 1)
+      {
+        lives--;
+      }
     }
 
-    private static void RespawnPlayer(global::TowerFall.Session session, int playerIndex, Allegiance allegiance, Allegiance teamColor)
+    private static void OnPlayerDeath_postfix_patch(Session __instance, Player player, PlayerCorpse corpse, int playerIndex, DeathCause deathType, Vector2 position, int killerIndex, ref bool __state)
+    {
+      if (!__state)
+        return;
+
+      Alarm.Set(corpse, 1, delegate
+      {
+        RespawnPlayer(__instance, playerIndex, player.Allegiance, player.TeamColor);
+      });
+    }
+
+    private static void RespawnPlayer(Session session, int playerIndex, Allegiance allegiance, Allegiance teamColor)
     {
       if (session?.CurrentLevel == null)
         return;
@@ -236,7 +269,7 @@ namespace TFModFortRisePoto
         spawnPos = spawnPoints.Count > 0 ? spawnPoints[playerIndex % spawnPoints.Count] : new Vector2(100, 100);
       }
 
-      var newPlayer = new global::TowerFall.Player(
+      var newPlayer = new Player(
         playerIndex,
         spawnPos,
         allegiance,

@@ -1,10 +1,13 @@
 {
 	"name": "GameModeRespawn",
-	"version": "0.0.2",
-	"required": "4.1.0",
+	"version": "1.0.0",
 	"author": "ebe1.kenobi",
 	"description": "GameModeRespawn",
 	"dll": "TFModFortRiseGameModeRespawn.dll",
 	"dependencies": [
+		{
+			"name": "FortRise",
+			"version": "5.2.3"
+		}
 	]
 }

@@ -1,37 +1,56 @@
+#nullable enable
 using FortRise;
 using Microsoft.Xna.Framework;
 using TowerFall;
 
-namespace TFModFortRisePoto
+namespace TFModFortRiseGameModeRespawn
 {
   /// <summary>
   /// Versus mode: Players have N lives, respawn immediately when killed if they have remaining lives.
   /// No shield mechanic - normal TowerFall death with instant respawn.
   /// </summary>
-  public sealed class Respawn : CustomGameMode
+  public sealed class Respawn : IVersusGameMode, IRegisterable
   {
-    public override void StartGame(Session session)
+    private static ISubtextureEntry RespawnIcon { get; set; } = null!;
+
+    /// <summary>
+    /// Entree renvoyee par le registre. Sert notamment a reconnaitre le mode
+    /// via <c>MatchSettings.Mode == Respawn.RespawnEntry.Modes</c>, ce qui
+    /// remplace le couple IsCustom / CurrentModeName de FortRise 4.
+    /// </summary>
+    public static IVersusGameModeEntry RespawnEntry { get; private set; } = null!;
+
+    //public string Name => "Instant Respawn Lives";
+    public string Name => "Respawn";
+    public Color NameColor => new Color(255, 150, 130);
+    public ISubtextureEntry Icon => RespawnIcon;
+    public bool IsTeamMode => false;
+
+    public static void Register(IModContent content, IModRegistry registry)
+    {
+      // Le mod n'embarque pas de texture : on reutilise l'icone vanilla.
+      // Le callback est resolu paresseusement, une fois les atlas charges.
+      RespawnIcon = registry.Subtextures.RegisterTexture(
+          "gameModes/respawn",
+          () => TFGame.MenuAtlas["gameModes/lastManStanding"],
+          SubtextureAtlasDestination.MenuAtlas
+      );
+
+      RespawnEntry = registry.GameModes.RegisterVersusGameMode(new Respawn());
+    }
+
+    public void OnStartGame(Session session)
     {
     }
 
-    public override RoundLogic CreateRoundLogic(Session session)
+    public RoundLogic OnCreateRoundLogic(Session session)
     {
       return new RespawnRoundLogic(session);
     }
 
-    public override void Initialize()
+    public int OverrideCoinOffset(Session? session)
     {
-      //Name = "Instant Respawn Lives";
-      Name = "Respawn";
-
-      ModeType = GameModeType.Versus;
-      Icon = TFGame.MenuAtlas["gameModes/lastManStanding"];
-      NameColor = new Color(255, 150, 130);
-      CoinOffset = 11;
-    }
-
-    public override void InitializeSounds()
-    {
+      return 11;
     }
   }
 }

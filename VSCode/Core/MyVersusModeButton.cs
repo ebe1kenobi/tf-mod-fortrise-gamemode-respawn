@@ -1,35 +1,35 @@
-using System.Runtime;
+using FortRise;
+using HarmonyLib;
 using Microsoft.Xna.Framework;
 using Monocle;
 using TowerFall;
 
-namespace TFModFortRisePoto
+namespace TFModFortRiseGameModeRespawn
 {
-  internal class MyVersusModeButton
+  public class MyVersusModeButton : IHookable
   {
-    internal static void Load()
+    public static void Load(IHarmony harmony)
     {
-      On.TowerFall.VersusModeButton.Update += Update_patch;
-      On.TowerFall.VersusModeButton.Render += Render_patch;
-      On.TowerFall.VersusMapButton.OnConfirm += MapConfirm_patch;
-    }
-
-    internal static void Unload()
-    {
-      On.TowerFall.VersusModeButton.Update -= Update_patch;
-      On.TowerFall.VersusModeButton.Render -= Render_patch;
-      On.TowerFall.VersusMapButton.OnConfirm -= MapConfirm_patch;
+      harmony.Patch(
+          AccessTools.DeclaredMethod(typeof(VersusModeButton), nameof(VersusModeButton.Update)),
+          prefix: new HarmonyMethod(Update_patch)
+      );
+      harmony.Patch(
+          AccessTools.DeclaredMethod(typeof(VersusModeButton), nameof(VersusModeButton.Render)),
+          postfix: new HarmonyMethod(Render_patch)
+      );
+      harmony.Patch(
+          AccessTools.DeclaredMethod(typeof(VersusMapButton), nameof(VersusMapButton.OnConfirm)),
+          prefix: new HarmonyMethod(MapConfirm_patch)
+      );
     }
 
     // Tant que la popup est ouverte, on ne demarre pas le match (sinon la scene
     // menu est remplacee sans fermer la popup). Il faut fermer la popup d'abord.
-    private static void MapConfirm_patch(On.TowerFall.VersusMapButton.orig_OnConfirm orig, global::TowerFall.VersusMapButton self)
+    private static bool MapConfirm_patch(VersusMapButton __instance)
     {
-      if (UIVersusHandicapPopup.IsOpen)
-        return;
-      orig(self);
+      return !UIVersusHandicapPopup.IsOpen;
     }
-
 
     private static bool AnyPlayerArrowsPressed()
     {
@@ -43,49 +43,37 @@ namespace TFModFortRisePoto
       return false;
     }
 
-    //private static void OpenHandicapPopup(global::TowerFall.VersusModeButton self)
-    //{
-    //  if (UIVersusHandicapPopup.IsOpen || self.Scene == null)
-    //    return;
-
-    //  Sounds.ui_click.Play(160f, 1f);
-    //  self.Scene.Add(new UIVersusHandicapPopup(self));
-    //}
-
-    private static void Update_patch(On.TowerFall.VersusModeButton.orig_Update orig, global::TowerFall.VersusModeButton self)
+    private static bool Update_patch(VersusModeButton __instance)
     {
-      if (!MainMenu.VersusMatchSettings.IsCustom
-          || MainMenu.VersusMatchSettings.CurrentModeName != nameof(Respawn)) {
-        orig(self);
-        return;
-      }
-      if (self.Selected && !UIVersusHandicapPopup.IsOpen && AnyPlayerArrowsPressed())
+      if (!MyRespawnPlayer.IsRespawnMode(MainMenu.VersusMatchSettings))
       {
-        if (self.Scene != null)
+        return true;
+      }
+
+      if (__instance.Selected && !UIVersusHandicapPopup.IsOpen && AnyPlayerArrowsPressed())
+      {
+        if (__instance.Scene != null)
         {
           Sounds.ui_click.Play(160f, 1f);
-          self.Scene.Add(new UIVersusHandicapPopup(self));
+          __instance.Scene.Add(new UIVersusHandicapPopup(__instance));
         }
-        return;
+        return false;
       }
 
-      orig(self);
+      return true;
     }
 
-    private static void Render_patch(On.TowerFall.VersusModeButton.orig_Render orig, global::TowerFall.VersusModeButton self)
+    private static void Render_patch(VersusModeButton __instance)
     {
-      orig(self);
-
-      if (!self.Selected || UIVersusHandicapPopup.IsOpen)
+      if (!__instance.Selected || UIVersusHandicapPopup.IsOpen)
         return;
 
-      if (!MainMenu.VersusMatchSettings.IsCustom
-          || MainMenu.VersusMatchSettings.CurrentModeName != nameof(Respawn))
+      if (!MyRespawnPlayer.IsRespawnMode(MainMenu.VersusMatchSettings))
       {
         return;
       }
 
-      Vector2 hintPos = self.Position + new Vector2(0f, 22f);
+      Vector2 hintPos = __instance.Position + new Vector2(0f, 22f);
       Draw.OutlineTextCentered(TFGame.Font, "Y: LIFE", hintPos, Calc.HexToColor("FFEC5E"), 1f);
     }
   }

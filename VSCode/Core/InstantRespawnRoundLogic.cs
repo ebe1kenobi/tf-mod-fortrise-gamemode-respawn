@@ -1,7 +1,7 @@
 using Microsoft.Xna.Framework;
 using TowerFall;
 
-namespace TFModFortRisePoto
+namespace TFModFortRiseGameModeRespawn
 {
   /// <summary>
   /// Custom RoundLogic for Instant Respawn Lives mode
@@ -22,7 +22,7 @@ namespace TFModFortRisePoto
         // Just handle the death without triggering round end checks
         return;
       }
-      
+
       // Player is out of lives, use normal death handling
       base.OnPlayerDeath(player, corpse, playerIndex, deathType, position, killerIndex);
     }

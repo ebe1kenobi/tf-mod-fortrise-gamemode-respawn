@@ -1,7 +1,7 @@
 using Monocle;
 using TowerFall;
 
-namespace TFModFortRisePoto
+namespace TFModFortRiseGameModeRespawn
 {
   /// <summary>
   /// Per-player handicap configured from the versus match settings screen.
