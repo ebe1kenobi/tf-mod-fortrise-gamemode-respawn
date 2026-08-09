@@ -21,7 +21,7 @@ namespace TFModFortRiseGameModeRespawn
     public static IVersusGameModeEntry RespawnEntry { get; private set; } = null!;
 
     //public string Name => "Instant Respawn Lives";
-    public string Name => "Respawn";
+    public string Name => "Ebe1.Respawn";
     public Color NameColor => new Color(255, 150, 130);
     public ISubtextureEntry Icon => RespawnIcon;
     public bool IsTeamMode => false;

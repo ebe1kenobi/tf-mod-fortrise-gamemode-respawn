@@ -23,21 +23,47 @@ Pick the **Respawn** mode on the versus screen, then start the match.
 > shown under the button. The popup locks the menu while it is open (no going back,
 > no starting the match); **A** or **B** closes it.
 
-The popup sets, **per player**, the win handicap and the number of lives:
+The popup sets the number of lives **per player**, plus the immunity window shared
+by everyone:
 
 | Input | Effect |
 |-------|--------|
 | Up / Down | switch player |
-| Alt (RB) | switch between the "wins" and "lives" fields |
+| Alt (RB) | switch between the LIFE and IMMUNITY fields |
 | Left / Right | adjust the value |
 | A or B | close |
+
+Immunity is a single value, so it sits on its own line under the player list
+(`IMMUNITY (ALL)`) rather than being repeated on every row.
+
+### Life display
+
+A bar of segments is drawn above each archer. Past **8 lives** the bar would be
+unreadable, so it is replaced by a plain counter.
+
+The arrow counter is hidden during the immunity window that follows a respawn.
 
 ## Settings
 
 | Setting | Purpose |
 |---------|---------|
-| Respawn: starting lives (needs > 1) | default number of lives |
+| Respawn: starting lives (needs > 1) | number of lives, applied to every player |
 | Respawn: immunity on respawn (seconds) | immunity window after respawning |
+
+### Settings and popup are linked
+
+They act on the same values, but the popup is per player while a setting is global:
+
+- changing a **setting** applies the value to **every** player;
+- changing a value in the **popup** only updates the setting when **all active
+  players share it** — a single global value cannot represent four different ones,
+  and overwriting it would show something misleading.
+
+Immunity has no such issue: one value on both sides, always in sync.
+
+Every change is written to disk immediately. FortRise only saves settings when
+leaving the game's Options menu, so a value changed in the popup — or right before
+quitting — used to be lost.
 
 The life bar only shows up in this mode: it is gated on the session's game mode, so
 it cannot leak into another one.

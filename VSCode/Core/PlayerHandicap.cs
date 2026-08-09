@@ -33,7 +33,59 @@ namespace TFModFortRiseGameModeRespawn
 
     public static void AdjustImmunityHandicap(int delta)
     {
-      ImmunityHandicap = Calc.Clamp(ImmunityHandicap + delta, 0, MaxImmunityHandicap);
+      SetImmunity(ImmunityHandicap + delta);
+    }
+
+    /// <summary>Valeur globale : reglage du module et popup ecrivent au meme endroit.</summary>
+    public static void SetImmunity(int value)
+    {
+      ImmunityHandicap = Calc.Clamp(value, 0, MaxImmunityHandicap);
+
+      var settings = TFModFortRiseGameModeRespawnModule.Settings;
+      if (settings != null && settings.respawnImmunitySeconds != ImmunityHandicap)
+        settings.respawnImmunitySeconds = ImmunityHandicap;
+    }
+
+    /// <summary>
+    /// Applique le meme nombre de vies a tous les joueurs. C'est ce que fait le
+    /// reglage du module, qui n'a pas de notion de joueur.
+    /// </summary>
+    public static void SetLivesForAll(int value)
+    {
+      int clamped = Calc.Clamp(value, 1, MaxLivesHandicap);
+      for (int i = 0; i < LivesHandicap.Length; i++)
+        LivesHandicap[i] = clamped;
+    }
+
+    /// <summary>
+    /// Remonte la valeur des vies vers le reglage du module, uniquement si tous les
+    /// joueurs partagent la meme : un reglage global ne peut pas representer quatre
+    /// valeurs differentes, et l'ecraser donnerait une valeur trompeuse.
+    /// </summary>
+    public static void SyncSettings()
+    {
+      var settings = TFModFortRiseGameModeRespawnModule.Settings;
+      if (settings == null)
+        return;
+
+      // Seuls les joueurs ACTIFS comptent : la popup ne liste qu'eux, alors que le
+      // tableau a huit entrees. Comparer les huit laissait les joueurs absents a leur
+      // valeur par defaut, donc jamais de valeur commune, et le reglage du module
+      // n'etait jamais mis a jour.
+      int common = -1;
+      for (int i = 0; i < LivesHandicap.Length && i < TFGame.Players.Length; i++)
+      {
+        if (!TFGame.Players[i])
+          continue;
+
+        if (common < 0)
+          common = LivesHandicap[i];
+        else if (LivesHandicap[i] != common)
+          return;
+      }
+
+      if (common >= 0 && settings.lifeNumber != common)
+        settings.lifeNumber = common;
     }
 
     public static void AdjustLives(int playerIndex, int delta)
@@ -41,14 +93,15 @@ namespace TFModFortRiseGameModeRespawn
       if (playerIndex < 0 || playerIndex >= LivesHandicap.Length)
         return;
 
-      LivesHandicap[playerIndex] = Calc.Clamp(LivesHandicap[playerIndex] + delta, 0, MaxLivesHandicap);
+      LivesHandicap[playerIndex] = Calc.Clamp(LivesHandicap[playerIndex] + delta, 1, MaxLivesHandicap);
+      SyncSettings();
     }
 
     public static bool HasAnyHandicap()
     {
       for (int i = 0; i < LivesHandicap.Length; i++)
       {
-        if (LivesHandicap[i] > 0)
+        if (LivesHandicap[i] > 1)
           return true;
       }
 

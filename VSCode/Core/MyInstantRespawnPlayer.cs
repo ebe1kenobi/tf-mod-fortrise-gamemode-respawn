@@ -21,12 +21,6 @@ namespace TFModFortRiseGameModeRespawn
     private const int FramesPerSecond = 60;
 
     // Etat transmis entre le prefix et le postfix d'un meme appel patche.
-    private struct HUDRenderState
-    {
-      public bool ArrowHudHidden;
-      public bool PreviousArrowHudVisible;
-    }
-
     private struct UpdateState
     {
       public bool ShootLockedByImmunity;
@@ -99,27 +93,35 @@ namespace TFModFortRiseGameModeRespawn
       }
     }
 
-    private static void HUDRender_prefix_patch(Player __instance, bool wrapped, ref HUDRenderState __state)
+    /// <summary>
+    /// Masque le compteur de fleches pendant l'immunite qui suit une reapparition.
+    ///
+    /// Mettre ArrowHUD.Visible a false ne suffit pas : Player.HUDRender appelle
+    /// ArrowHUD.Render() directement, sans jamais consulter Visible. On saute donc la
+    /// methode entiere et on rend l'indicateur de joueur nous-memes, puisque c'est
+    /// l'autre chose qu'elle affichait. Le postfix, lui, s'execute quand meme et
+    /// continue de dessiner la barre de vies.
+    /// </summary>
+    private static bool HUDRender_prefix_patch(Player __instance, bool wrapped)
     {
-      int playerIndex = __instance.PlayerIndex;
-      __state.ArrowHudHidden = ImmunityFramesRemaining[playerIndex] > 0f && __instance.ArrowHUD != null;
-      if (__state.ArrowHudHidden)
-      {
-        __state.PreviousArrowHudVisible = __instance.ArrowHUD.Visible;
-        __instance.ArrowHUD.Visible = false;
-      }
+      if (!RespawnEnabledFor(__instance))
+        return true;
+
+      if (ImmunityFramesRemaining[__instance.PlayerIndex] <= 0f)
+        return true;
+
+      if (!wrapped && __instance.Indicator != null)
+        __instance.Indicator.Render();
+
+      return false;
     }
 
-    private static void HUDRender_postfix_patch(Player __instance, bool wrapped, ref HUDRenderState __state)
+    private static void HUDRender_postfix_patch(Player __instance, bool wrapped)
     {
-      int playerIndex = __instance.PlayerIndex;
-      if (__state.ArrowHudHidden)
-      {
-        __instance.ArrowHUD.Visible = __state.PreviousArrowHudVisible;
-      }
-
       if (wrapped || !RespawnEnabledFor(__instance))
         return;
+
+      int playerIndex = __instance.PlayerIndex;
 
       int maxLives = Math.Max(1, PlayerHandicap.GetLivesHandicap(playerIndex));
       int lives = Math.Max(0, LivesRemaining[playerIndex]);

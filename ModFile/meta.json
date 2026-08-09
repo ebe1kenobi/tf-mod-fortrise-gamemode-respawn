@@ -1,8 +1,8 @@
 {
-	"name": "GameModeRespawn",
+	"name": "Ebe1.Respawn",
 	"version": "1.0.0",
 	"author": "ebe1.kenobi",
-	"description": "GameModeRespawn",
+	"description": "Respawn",
 	"dll": "TFModFortRiseGameModeRespawn.dll",
 	"dependencies": [
 		{
