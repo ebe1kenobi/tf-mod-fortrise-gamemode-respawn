@@ -62,7 +62,7 @@ namespace TFModFortRiseGameModeRespawn
         //Debugger.Launch(); // Proposera d’attacher Visual Studio
       }
       Instance = this;
-      //TFModFortRiseGameModeRespawn.Logger.Init("TFModFortRiseGameModeRespawn");
+      TFModFortRiseGameModeRespawn.Logger.Init(logger);
 
       foreach (var registerable in Registerables)
       {

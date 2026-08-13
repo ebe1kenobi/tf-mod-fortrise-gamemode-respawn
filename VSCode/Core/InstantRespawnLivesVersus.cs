@@ -28,12 +28,11 @@ namespace TFModFortRiseGameModeRespawn
 
     public static void Register(IModContent content, IModRegistry registry)
     {
-      // Le mod n'embarque pas de texture : on reutilise l'icone vanilla.
-      // Le callback est resolu paresseusement, une fois les atlas charges.
+      // Icone propre au mode, aux dimensions des quatre du jeu (184x82) et dans leur
+      // style : l'archer dans une fleche qui boucle. Elle remplace l'emprunt a
+      // "lastManStanding", qui disait le contraire de ce mode-ci.
       RespawnIcon = registry.Subtextures.RegisterTexture(
-          "gameModes/respawn",
-          () => TFGame.MenuAtlas["gameModes/lastManStanding"],
-          SubtextureAtlasDestination.MenuAtlas
+          content.Root.GetRelativePath("Content/Atlas/gamemode.png")
       );
 
       RespawnEntry = registry.GameModes.RegisterVersusGameMode(new Respawn());

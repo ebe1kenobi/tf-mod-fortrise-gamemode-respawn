@@ -68,6 +68,16 @@ quitting — used to be lost.
 The life bar only shows up in this mode: it is gated on the session's game mode, so
 it cannot leak into another one.
 
+## Game mode icon
+
+The mode has its own icon, at the size of the game's four (184x82) and in their
+style - a silhouette in three shades of one colour, no black: the archer inside a looping arrow.
+
+It used to be borrowed from LAST MAN STANDING's, which says the opposite of this mode. Two modes sharing
+one picture cannot be told apart in the list.
+
+The file is `ModFile/Content/Atlas/gamemode.png`.
+
 ## Build / deployment
 
 | Script | Purpose |
