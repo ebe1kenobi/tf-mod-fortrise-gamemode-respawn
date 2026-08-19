@@ -144,6 +144,8 @@ namespace TFModFortRiseGameModeRespawn
       // postfix de HUDRender qui la dessinait ne partait pas, la methode etant trop
       // petite pour survivre au JIT. Voir LivesHUD.
       __instance.CurrentLevel.Add<LivesHUD>(new LivesHUD());
+
+      MiasmaHold.Reset();
     }
 
     private static void Update_prefix_patch(Player __instance, ref UpdateState __state)

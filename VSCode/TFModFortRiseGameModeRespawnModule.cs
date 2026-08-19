@@ -18,6 +18,7 @@ namespace TFModFortRiseGameModeRespawn
 
     internal Type[] Hookables = [
         typeof(MyRespawnPlayer),
+        typeof(MiasmaHold),
         typeof(MyVersusModeButton),
     ];
 

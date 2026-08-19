@@ -43,6 +43,34 @@ unreadable, so it is replaced by a plain counter.
 
 The arrow counter is hidden during the immunity window that follows a respawn.
 
+**The bar is an entity of the level, not a patch on `Player.HUDRender`.** It used to be
+drawn from a postfix there, and that is why it vanished: `HUDRender` is three lines long,
+so the JIT copies it into its caller and the patch has nothing left to intercept —
+neither the prefix nor the postfix fired. An entity makes no such bet: Monocle calls its
+`Render` because it is in the scene, not because a hook survived. The same trap cost
+PlayTag its countdown and the Corpse variant its arrow counter.
+
+## The miasma waits
+
+The miasma is the game's answer to a round that drags on: it rises and forces a decision.
+In a mode where everyone has five lives it arrives in the middle of the match and settles
+it before the mode has had a chance to play — you die of the fog with four lives in your
+pocket, which is no way to go.
+
+So it is not removed, it is **postponed**. While any player still has more than one life,
+the round logic's counter is reset and any fog already in the level is taken out. The
+moment everybody is on their last life, the round becomes an ordinary versus and the
+miasma goes back to doing its job.
+
+Two details worth knowing:
+
+- **The count is over the players in the match, not the archers on screen.** A player
+  waiting to respawn has no entity in the level, and forgetting them would have brought
+  the fog back during every respawn.
+- **The counter is a private field**, read through `DynamicData` by name. If it is ever
+  renamed, the second half holds on its own: the fog gets removed every frame instead of
+  never being born. The worst case is a flicker, not a failure.
+
 ## Settings
 
 | Setting | Purpose |
