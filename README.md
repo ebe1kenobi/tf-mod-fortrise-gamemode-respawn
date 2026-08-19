@@ -1,5 +1,5 @@
 # GameModeRespawn
-
+<img width="640" height="400" alt="headhunters_122516_round_00" src="https://github.com/user-attachments/assets/b7916612-c737-49e0-9fd9-3321a6e62084" />
 **Respawn** game mode: every player gets a number of lives. On death they respawn
 right away with a short immunity window, until they run out of lives. A life bar is
 drawn above each archer.
@@ -15,6 +15,8 @@ Settings are under **Options > Mods > GameModeRespawn**.
 Data and log files live in `<TowerFall>/FortRise/Saves/GameModeRespawn/` and `<TowerFall>/FortRise/Logs/`.
 
 ## Usage
+
+<img width="496" height="580" alt="image" src="https://github.com/user-attachments/assets/eccb6f96-eb76-40d3-a3ab-44ab1fca4b2f" />
 
 Pick the **Respawn** mode on the versus screen, then start the match.
 
